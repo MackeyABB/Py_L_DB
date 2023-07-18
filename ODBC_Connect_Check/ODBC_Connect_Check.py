@@ -8,7 +8,8 @@ Function: ODBC connect test
 
 import pypyodbc
 import time
-from colorama import init, Fore, Back, Style
+# from colorama import init, Fore, Back, Style  # 实测生成exe不能使用。
+from termcolor import colored   # 实测生成exe不能使用。
 
 # 64 bit Access DB with ODBC
 # connStr = "DSN=CIS_PartLib_P_64;Uid=cadence_port;Pwd=Cadence_CIS.3;"
@@ -53,11 +54,12 @@ try:
     
     # 打印正常信息
     # print("\033[1;31;40m打开ODBC数据库正常！滚动窗口显示全部信息。\033[0m")
-    print(Fore.RED + "打开ODBC数据库正常！滚动窗口显示全部信息。")
+    # print(Fore.RED + "打开ODBC数据库正常！滚动窗口显示全部信息。")
+    print(colored('打开ODBC数据库正常！滚动窗口显示全部信息。', 'red'))
 
 except Exception as e:
     # print("\033[1;31;40m Open ODBC error: {} \033[0m".format(e))
-    print(Fore.RED + f"Open ODBC error: {e}")
+    # print(Fore.RED + f"Open ODBC error: {e}")
+    print(colored(f"Open ODBC error: {e}", 'red'))
 
-print(Style.RESET_ALL)
 input("按下回车键继续...")
