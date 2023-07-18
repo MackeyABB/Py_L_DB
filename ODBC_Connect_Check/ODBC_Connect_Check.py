@@ -3,9 +3,11 @@ Function: ODBC connect test
     use the Connect String to connect to the ODBC
     Check if any error.
     print the error information.
+    显示“连接”和“获取表名”的时间花费。
 '''
 
 import pypyodbc
+import time
 
 # 64 bit Access DB with ODBC
 # connStr = "DSN=CIS_PartLib_P_64;Uid=cadence_port;Pwd=Cadence_CIS.3;"
@@ -25,14 +27,23 @@ print("connStr is:\t{}\n".format(connStr))
 # pypyodbc.Error: ('IM014', '[IM014] [Microsoft][ODBC Driver Manager] The specified DSN contains an architecture mismatch between the Driver and Application')
 # connStr = "DSN=CIS_PartLib_P_32;Uid=cadence_port;Pwd=Cadence_CIS.3;"
 try:
-    print("Connect to ODBC ...\n")
+    # Connect
+    print("Connect to ODBC ...")
+    start_time = time.perf_counter()
     conn = pypyodbc.connect(connStr)
     cursor = conn.cursor()
+    line1_time = time.perf_counter()
+    line1_execution_time = line1_time - start_time
+    print(f"执行Connect的时间：{line1_execution_time}秒\n")
 
-    print("Getting Table name ...\n")
     # 先获取所有表名
+    print("Getting Table name ...")
+    line2_time = time.perf_counter()
     cursor.tables(tableType="TABLE")
     table_names = cursor.fetchall()
+    line3_time = time.perf_counter()
+    line3_execution_time = line3_time - line2_time
+    print(f"执行获取表名的时间：{line3_execution_time}秒\n")
 
     # 打印表名
     print("Tables inforamtion:")
