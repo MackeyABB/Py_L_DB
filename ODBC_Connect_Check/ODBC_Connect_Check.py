@@ -49,7 +49,11 @@ try:
     print("Tables inforamtion:")
     for table_name in table_names:
         print(table_name)
+    
+    # 打印正常信息
+    print("\033[1;31;40m打开ODBC数据库正常！滚动窗口显示全部信息。\033[0m")
+
 except Exception as e:
-    print("Open ODBC error: {}".format(e))
+    print("\033[1;31;40m Open ODBC error: {} \033[0m".format(e))
 
 input("按下回车键继续...")
