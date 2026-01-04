@@ -33,61 +33,58 @@ TABLES: List[str] = [
     "[01-Capacitors]"
 ]
 
-# 过滤条件配置（格式：(条件描述, 条件SQL片段)）
-FILTER_CONDITIONS: List[tuple[str, str]] = [
-    ("partnumber_filter", "PartNumber LIKE '%res_2324%'"),
-    ("sapnumber_filter", "SAP_Number LIKE '%2TF%'"),
-    # ("status_filter", "status = 'active'"),
+# 过滤条件（与关系：所有条件需同时满足）
+# 格式：[条件SQL片段]，最终会用 AND 拼接
+FILTER_CONDITIONS: List[str] = [
+    "PartNumber LIKE '%res_2324%'",
+    "SAP_Number LIKE '%4TES%'",
+    # "status = 'active'"
 ]
 
 # --------------------------
 # 2. 核心函数（模板化生成，避开PyPika底层Bug）
 # --------------------------
-def build_single_table_sql(table_name: str, fields: List[str], filter_sql: str) -> str:
+def build_single_table_sql(table_name: str, fields: List[str], filter_conditions: List[str]) -> str:
     """
-    生成单表单条件的SQL片段（纯字符串拼接，避开PyPika解析）
-    :param table_name: 表名（如"[21-MiscParts]"）
+    生成单表查询SQL（多条件用AND组合）
+    :param table_name: 表名
     :param fields: 字段列表
-    :param filter_sql: 过滤条件SQL（如"PartNumber LIKE '%res_2324%'"）
-    :return: 单表查询SQL
+    :param filter_conditions: 过滤条件列表（AND关系）
+    :return: 单表SQL
     """
     # 拼接字段（带表前缀）
-    fields_sql = ", ".join([f"{f}" for f in fields])
+    fields_sql = ", ".join([f"{table_name}.{f}" for f in fields])
+    # 拼接过滤条件（AND关系）
+    filter_sql = " AND ".join(filter_conditions) if filter_conditions else "1=1"
     # 生成单表SQL
     single_sql = f"SELECT {fields_sql} FROM {table_name} WHERE {filter_sql}"
     return single_sql
 
-def build_condition_union_sql(tables: List[str], fields: List[str], filter_sql: str) -> str:
-    """生成单个条件的多表UNION ALL SQL"""
-    # 生成所有单表SQL
-    table_sqls = [build_single_table_sql(t, fields, filter_sql) for t in tables]
-    # 拼接UNION ALL
-    return " UNION ALL ".join(table_sqls)
-
 def build_final_sql(
     tables: List[str],
     fields: List[str],
-    filter_conditions: List[tuple[str, str]],
+    filter_conditions: List[str],
     order_by_field: str = "PartNumber",
     order: str = "ASC"
 ) -> str:
-    """生成最终的多条件合并SQL"""
-    # 生成每个条件的UNION ALL块
-    condition_sql_blocks = [
-        build_condition_union_sql(tables, fields, filter_sql)
-        for _, filter_sql in filter_conditions
+    """
+    生成最终SQL（多表UNION ALL + 条件AND组合）
+    """
+    # 生成每个表的查询（所有表共用同一套AND条件）
+    table_sqls = [
+        build_single_table_sql(t, fields, filter_conditions)
+        for t in tables
     ]
     
-    # 拼接所有条件块
-    union_all_sql = " UNION ALL ".join(condition_sql_blocks)
+    # 拼接多表的UNION ALL（仅表之间UNION ALL，条件是AND）
+    union_all_sql = " UNION ALL ".join(table_sqls)
     
     # 追加排序
     final_sql = f"{union_all_sql} ORDER BY {order_by_field} {order}"
     
-    # 格式化SQL（可选，便于阅读）
+    # 格式化SQL（便于阅读）
     final_sql = final_sql.replace(" UNION ALL ", "\nUNION ALL\n")
-    final_sql = final_sql.replace(" ORDER BY ", "\nORDER BY ")
-    
+    final_sql = final_sql.replace(" AND ", "\n  AND ")  # 条件换行，更易读
     return final_sql
 
 # --------------------------
