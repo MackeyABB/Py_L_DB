@@ -1,7 +1,18 @@
 '''
 Introduction:
     使用PyPika构建SQL查询
+    https://pypika.readthedocs.io/en/latest/
+
+Revision History:
+1.0.0 - 20260107 - 初始版本
 '''
+
+# 版本号
+# xx.yy.zz
+# xx: 大版本，架构性变化
+# yy: 功能性新增
+# zz: Bug修复
+__version__ = "1.0.0"
 
 from pypika import Query, Table, Field
 from pypika.enums import Order
