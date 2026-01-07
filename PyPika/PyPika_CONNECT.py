@@ -10,6 +10,22 @@ from typing import List, Optional
 # --------------------------
 # 1. 全局配置项（与业务完全匹配）
 # --------------------------
+# 待查询的字段列表
+# SAPMaxDB字段列表
+FIELDS_SAPMaxDB: List[str] = [
+    "PartNumber", "value_1", "SAP_Number", "SAP_Description", "status", "parttype",
+    "manufact_1", "manufact_partnum_1", "datasheet_1",
+    "manufact_2", "manufact_partnum_2", "datasheet_2",
+    "manufact_3", "manufact_partnum_3", "datasheet_3",
+    "manufact_4", "manufact_partnum_4", "datasheet_4",
+    "manufact_5", "manufact_partnum_5", "datasheet_5",
+    "manufact_6", "manufact_partnum_6", "datasheet_6",
+    "manufact_7", "manufact_partnum_7", "datasheet_7",
+    "scm_symbol", "pcb_footprint", "alt_symbols", "mounttechn",
+    "ad_symbol", "ad_footprint", "ad_alt_footprint", "detaildrawing",
+    "Status", "Editor", "US_technology", "TechDescription"
+]
+# AccessDB字段列表
 FIELDS_AccessDB: List[str] = [
     "PartNumber", "value", "SAP_Number", "SAP_Description", "status", "parttype",
     "[manufact 1]", "[manufact partnum 1]", "[datasheet 1]",
@@ -25,13 +41,53 @@ FIELDS_AccessDB: List[str] = [
 ]
 
 # 待查询的表列表
+# SAPMaxDB表列表
+TABLES_SAPMaxDB: List[str] = [
+    "CAPACITORS",
+    # "CONNECTORS",
+    # "CONVERTERS",
+    # "DIODES",
+    # "ICS_ANALOG",
+    # "ICS_DIGITAL",
+    # "MAGNETICS",
+    # "MECHPARTS",
+    # "MEMORY",
+    # "MISCPARTS",
+    # "OPTO",
+    # "OP_AMPS",
+    # "OSCILLATORS",
+    # "REGULATORS",
+    # "RELAYS",
+    "RESISTORS",
+    # "SENSORS",
+    # "SWITCHES",
+    # "TRANSFORMERS",
+    # "TRANSISTORS",
+    # "VARISTORS"
+]
+# AccessDB表列表
 TABLES_AccessDB: List[str] = [
-    # "[21-MiscParts]", "[20-MechParts]", "[19-Switches]", "[18-Sensors]", "[17-Relays]",
-    # "[16-Connectors]", "[15-Oscillators]", "[14-Opto]", "[13-Transformers]", "[12-Magnetics]",
-    # "[11-OP_Amps]", "[10-Converters]", "[09-Regulators]", "[08-ICs_analog]", "[07-Memory]",
-    # "[06-ICs_digital]", "[05-Diodes]", "[04-Transistors]", "[03-Varistors]", 
+    "[01-Capacitors]",
     "[02-Resistors]",
-    "[01-Capacitors]"
+    # "[03-Varistors]",
+    # "[04-Transistors]",
+    # "[05-Diodes]",
+    # "[06-ICs_digital]",
+    # "[07-Memory]",
+    # "[08-ICs_analog]",
+    # "[09-Regulators]",
+    # "[10-Converters]",
+    # "[11-OP_Amps]",
+    # "[12-Magnetics]",
+    # "[13-Transformers]",
+    # "[14-Opto]",
+    # "[15-Oscillators]",
+    # "[16-Connectors]",
+    # "[17-Relays]",
+    # "[18-Sensors]",
+    # "[19-Switches]",
+    # "[20-MechParts]",
+    # "[21-MiscParts]"
 ]
 
 # 过滤条件（与关系：所有条件需同时满足）
@@ -39,7 +95,7 @@ TABLES_AccessDB: List[str] = [
 # --------------------------
 # 动态生成过滤条件
 # --------------------------
-def generate_filter_conditions(
+def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
     PartNo_Searchby: Optional[str] = None,
     SAPNo_Searchby: Optional[str] = None,
     PartValue_Searchby: Optional[str] = None,
@@ -47,31 +103,48 @@ def generate_filter_conditions(
 ) -> List[str]:
     """
     根据输入变量是否非空，动态生成AND关系的过滤条件
+    :param DB_Type: 数据库类型（SAPMaxDB或AccessDB，默认SAPMaxDB）
     :param PartNo_Searchby: 零件号搜索值（非空则生成PartNumber LIKE条件）
     :param SAPNo_Searchby: SAP号搜索值（非空则生成SAP_Number LIKE条件）
     :param PartValue_Searchby: 零件值搜索值（非空则生成value LIKE条件）
     :param MfcPartNum_Searchby: 厂商零件号搜索值（非空则生成[manufact partnum 1-7]的OR条件）
     :return: 过滤条件列表（AND关系，空变量不生成条件）
+    注意:
+    SAP MAXDB检索区分大小写的COLLATE Latin1_General_CS_AS
     """
     filter_conditions = []
     
     # 1. 处理PartNumber（PartNo_Searchby非空则添加）
     if PartNo_Searchby and PartNo_Searchby.strip():
-        filter_conditions.append(f"PartNumber LIKE '%{PartNo_Searchby.strip()}%'")
-    
+        if DB_Type == "AccessDB":
+            filter_conditions.append(f"PartNumber LIKE '%{PartNo_Searchby.strip()}%'")
+        else:  # SAPMaxDB
+            filter_conditions.append(f"LOWER(PartNumber) LIKE LOWER('%{PartNo_Searchby.strip()}%')")
+
     # 2. 处理SAP_Number（SAPNo_Searchby非空则添加）
     if SAPNo_Searchby and SAPNo_Searchby.strip():
-        filter_conditions.append(f"SAP_Number LIKE '%{SAPNo_Searchby.strip()}%'")
-    
+        if DB_Type == "AccessDB":
+            filter_conditions.append(f"SAP_Number LIKE '%{SAPNo_Searchby.strip()}%'")
+        else:  # SAPMaxDB
+            filter_conditions.append(f"LOWER(SAP_Number) LIKE LOWER('%{SAPNo_Searchby.strip()}%')")
+
     # 3. 处理value（PartValue_Searchby非空则添加）
     if PartValue_Searchby and PartValue_Searchby.strip():
-        filter_conditions.append(f"value LIKE '%{PartValue_Searchby.strip()}%'")
+        if DB_Type == "AccessDB":
+            filter_conditions.append(f"value LIKE '%{PartValue_Searchby.strip()}%'")
+        else: # SAPMaxDB
+            filter_conditions.append(f"LOWER(value_1) LIKE LOWER('%{PartValue_Searchby.strip()}%')")
+
     
     # 4. 处理[manufact partnum 1-7]（MfcPartNum_Searchby非空则添加OR组合条件）
     if MfcPartNum_Searchby and MfcPartNum_Searchby.strip():
-        mfc_partnum_fields = [f"[manufact partnum {i}]" for i in range(1, 8)]  # 1-7
-        # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%' OR ...)
-        mfc_conditions = " OR ".join([f"{field} LIKE '%{MfcPartNum_Searchby.strip()}%'" for field in mfc_partnum_fields])
+        if DB_Type == "AccessDB":
+            mfc_partnum_fields = [f"[manufact partnum {i}]" for i in range(1, 8)]  # 1-7
+        else: # SAPMaxDB
+            mfc_partnum_fields = [f"manufact_partnum_{i}" for i in range(1, 8)]  # 1-7
+        
+        # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%'
+        mfc_conditions = " OR ".join([f"LOWER({field}) LIKE LOWER('%{MfcPartNum_Searchby.strip()}%')" for field in mfc_partnum_fields])
         filter_conditions.append(f"({mfc_conditions})")  # 括号保证优先级
     
     return filter_conditions
@@ -129,16 +202,40 @@ def build_final_sql(
 # --------------------------
 if __name__ == "__main__":
     try:
+        # 切换不同DB
+        DB_Type = "AccessDB"
+        DB_Type = "SAPMaxDB"
+
+        if DB_Type == "AccessDB":
+            # AccessDB
+            TABLES = TABLES_AccessDB
+            FIELDS = FIELDS_AccessDB   
+        else:
+            # SAPMaxDB
+            TABLES = TABLES_SAPMaxDB
+            FIELDS = FIELDS_SAPMaxDB
+            
+
         # ======================
         # 模拟输入变量（可替换为实际业务输入）
         # ======================
-        PartNo_Searchby = "res_232"       # 非空，生成PartNumber条件
-        SAPNo_Searchby = "2TF"          # 非空，生成SAP_Number条件
-        PartValue_Searchby = ""            # 空，不生成条件
-        MfcPartNum_Searchby = ""   # 非空，生成manufact partnum 1-7的OR条件
+        # 生成PartNumber条件
+        # PartNo_Searchby = "res_232"       
+        PartNo_Searchby = ""       
+         # 生成SAP_Number条件
+        SAPNo_Searchby = "2tf"         
+        # SAPNo_Searchby = ""          
+        # 生成value条件
+        PartValue_Searchby = "30K"    
+        # PartValue_Searchby = "1U"    
+        # PartValue_Searchby = ""            
+        # 生成manufact partnum 1-7的OR条件
+        MfcPartNum_Searchby = "RC1206"   
+        # MfcPartNum_Searchby = ""   
         
         # 动态生成过滤条件
         FILTER_CONDITIONS = generate_filter_conditions(
+            DB_Type=DB_Type,
             PartNo_Searchby=PartNo_Searchby,
             SAPNo_Searchby=SAPNo_Searchby,
             PartValue_Searchby=PartValue_Searchby,
@@ -147,8 +244,8 @@ if __name__ == "__main__":
         
         # 生成最终SQL
         final_sql = build_final_sql(
-            tables=TABLES_AccessDB,
-            fields=FIELDS_AccessDB,
+            tables=TABLES,
+            fields=FIELDS,
             filter_conditions=FILTER_CONDITIONS,
             order_by_field="PartNumber",
             order="ASC"
