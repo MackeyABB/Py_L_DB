@@ -5,7 +5,7 @@ Introduction:
 
 from pypika import Query, Table, Field
 from pypika.enums import Order
-from typing import List, Callable
+from typing import List, Optional
 
 # --------------------------
 # 1. 全局配置项（与业务完全匹配）
@@ -24,6 +24,7 @@ FIELDS: List[str] = [
     "STATUS", "EDITOR", "US_TECHNOLOGY", "TECHDESCRIPTION"
 ]
 
+# 待查询的表列表
 TABLES: List[str] = [
     # "[21-MiscParts]", "[20-MechParts]", "[19-Switches]", "[18-Sensors]", "[17-Relays]",
     # "[16-Connectors]", "[15-Oscillators]", "[14-Opto]", "[13-Transformers]", "[12-Magnetics]",
@@ -35,11 +36,45 @@ TABLES: List[str] = [
 
 # 过滤条件（与关系：所有条件需同时满足）
 # 格式：[条件SQL片段]，最终会用 AND 拼接
-FILTER_CONDITIONS: List[str] = [
-    "PartNumber LIKE '%res_2324%'",
-    "SAP_Number LIKE '%4TES%'",
-    # "status = 'active'"
-]
+# --------------------------
+# 动态生成过滤条件
+# --------------------------
+def generate_filter_conditions(
+    PartNo_Searchby: Optional[str] = None,
+    SAPNo_Searchby: Optional[str] = None,
+    PartValue_Searchby: Optional[str] = None,
+    MfcPartNum_Searchby: Optional[str] = None
+) -> List[str]:
+    """
+    根据输入变量是否非空，动态生成AND关系的过滤条件
+    :param PartNo_Searchby: 零件号搜索值（非空则生成PartNumber LIKE条件）
+    :param SAPNo_Searchby: SAP号搜索值（非空则生成SAP_Number LIKE条件）
+    :param PartValue_Searchby: 零件值搜索值（非空则生成value LIKE条件）
+    :param MfcPartNum_Searchby: 厂商零件号搜索值（非空则生成[manufact partnum 1-7]的OR条件）
+    :return: 过滤条件列表（AND关系，空变量不生成条件）
+    """
+    filter_conditions = []
+    
+    # 1. 处理PartNumber（PartNo_Searchby非空则添加）
+    if PartNo_Searchby and PartNo_Searchby.strip():
+        filter_conditions.append(f"PartNumber LIKE '%{PartNo_Searchby.strip()}%'")
+    
+    # 2. 处理SAP_Number（SAPNo_Searchby非空则添加）
+    if SAPNo_Searchby and SAPNo_Searchby.strip():
+        filter_conditions.append(f"SAP_Number LIKE '%{SAPNo_Searchby.strip()}%'")
+    
+    # 3. 处理value（PartValue_Searchby非空则添加）
+    if PartValue_Searchby and PartValue_Searchby.strip():
+        filter_conditions.append(f"value LIKE '%{PartValue_Searchby.strip()}%'")
+    
+    # 4. 处理[manufact partnum 1-7]（MfcPartNum_Searchby非空则添加OR组合条件）
+    if MfcPartNum_Searchby and MfcPartNum_Searchby.strip():
+        mfc_partnum_fields = [f"[manufact partnum {i}]" for i in range(1, 8)]  # 1-7
+        # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%' OR ...)
+        mfc_conditions = " OR ".join([f"{field} LIKE '%{MfcPartNum_Searchby.strip()}%'" for field in mfc_partnum_fields])
+        filter_conditions.append(f"({mfc_conditions})")  # 括号保证优先级
+    
+    return filter_conditions
 
 # --------------------------
 # 2. 核心函数（模板化生成，避开PyPika底层Bug）
@@ -84,7 +119,8 @@ def build_final_sql(
     
     # 格式化SQL（便于阅读）
     final_sql = final_sql.replace(" UNION ALL ", "\nUNION ALL\n")
-    final_sql = final_sql.replace(" AND ", "\n  AND ")  # 条件换行，更易读
+    final_sql = final_sql.replace(" AND ", "\n  AND ")
+    final_sql = final_sql.replace(" OR ", "\n    OR ")
     return final_sql
 
 # --------------------------
@@ -92,6 +128,22 @@ def build_final_sql(
 # --------------------------
 if __name__ == "__main__":
     try:
+        # ======================
+        # 模拟输入变量（可替换为实际业务输入）
+        # ======================
+        PartNo_Searchby = "res_232"       # 非空，生成PartNumber条件
+        SAPNo_Searchby = "2TF"          # 非空，生成SAP_Number条件
+        PartValue_Searchby = ""            # 空，不生成条件
+        MfcPartNum_Searchby = ""   # 非空，生成manufact partnum 1-7的OR条件
+        
+        # 动态生成过滤条件
+        FILTER_CONDITIONS = generate_filter_conditions(
+            PartNo_Searchby=PartNo_Searchby,
+            SAPNo_Searchby=SAPNo_Searchby,
+            PartValue_Searchby=PartValue_Searchby,
+            MfcPartNum_Searchby=MfcPartNum_Searchby
+        )
+        
         # 生成最终SQL
         final_sql = build_final_sql(
             tables=TABLES,
@@ -101,27 +153,40 @@ if __name__ == "__main__":
             order="ASC"
         )
         
-        # 输出结果
-        print("✅ SQL生成成功！")
-        print("="*120)
-        print(final_sql)
-        print("="*120)
-
-        # 1. 打印字符总数（对比预期）
-        print(f"SQL总字符数：{len(final_sql)}")
-
-        # 2. 检查关键片段是否存在（比如最后一个表、排序语句）
-        if "[01-Capacitors]" in final_sql and "ORDER BY PartNumber ASC" in final_sql:
-            print("✅ SQL包含所有关键内容，未截断")
-        else:
-            print("❌ SQL缺失关键内容，需检查生成逻辑")
-        
-        # 可选：将SQL写入文件（便于直接使用）
-        with open("generated_sql.sql", "w", encoding="utf-8") as f:
+        # 写入文件+验证
+        file_path = "dynamic_filter_sql.sql"
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(final_sql)
-        print("📄 SQL已写入 generated_sql.sql 文件")
+        
+        # 打印结果
+        print("="*120)
+        print("✅ 动态过滤条件生成成功！")
+        print(f"📄 完整SQL已保存至：{file_path}")
+        print(f"\n🔍 生成的过滤条件列表（AND关系）：")
+        for i, cond in enumerate(FILTER_CONDITIONS, 1):
+            print(f"   {i}. {cond}")
+        
+        print(f"\n📊 统计信息：")
+        print(f"   - 输入变量非空数量：{sum(1 for v in [PartNo_Searchby, SAPNo_Searchby, PartValue_Searchby, MfcPartNum_Searchby] if v and v.strip())}")
+        print(f"   - 生成过滤条件数量：{len(FILTER_CONDITIONS)}")
+        print(f"   - SQL总字符数：{len(final_sql)}")
+        print(f"   - 多表UNION ALL数量：{final_sql.count('UNION ALL')}")
+        
+        # 验证关键逻辑
+        # key_checks = [
+        #     "PartNumber LIKE '%res_2324%'" in final_sql,
+        #     "SAP_Number LIKE '%SAP001%'" in final_sql,
+        #     "([manufact partnum 1] LIKE '%MFC12345%' OR [manufact partnum 2] LIKE '%MFC12345%'" in final_sql,
+        #     "value LIKE" not in final_sql,  # PartValue_Searchby为空，不应出现
+        #     "ORDER BY PartNumber ASC" in final_sql
+        # ]
+        # if all(key_checks):
+        #     print("✅ 关键逻辑验证通过：条件动态生成正确，AND关系，SQL完整！")
+        # else:
+        #     print("❌ 关键逻辑验证失败，需检查条件生成逻辑！")
+        # print("="*120)
         
     except Exception as e:
-        print(f"❌ SQL生成失败：{type(e).__name__} - {e}")
+        print(f"❌ 执行失败：{type(e).__name__} - {e}")
         import traceback
         traceback.print_exc()
