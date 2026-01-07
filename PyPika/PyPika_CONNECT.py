@@ -10,7 +10,7 @@ from typing import List, Optional
 # --------------------------
 # 1. 全局配置项（与业务完全匹配）
 # --------------------------
-FIELDS: List[str] = [
+FIELDS_AccessDB: List[str] = [
     "PartNumber", "value", "SAP_Number", "SAP_Description", "status", "parttype",
     "[manufact 1]", "[manufact partnum 1]", "[datasheet 1]",
     "[manufact 2]", "[manufact partnum 2]", "[datasheet 2]",
@@ -25,7 +25,7 @@ FIELDS: List[str] = [
 ]
 
 # 待查询的表列表
-TABLES: List[str] = [
+TABLES_AccessDB: List[str] = [
     # "[21-MiscParts]", "[20-MechParts]", "[19-Switches]", "[18-Sensors]", "[17-Relays]",
     # "[16-Connectors]", "[15-Oscillators]", "[14-Opto]", "[13-Transformers]", "[12-Magnetics]",
     # "[11-OP_Amps]", "[10-Converters]", "[09-Regulators]", "[08-ICs_analog]", "[07-Memory]",
@@ -88,7 +88,8 @@ def build_single_table_sql(table_name: str, fields: List[str], filter_conditions
     :return: 单表SQL
     """
     # 拼接字段（带表前缀）
-    fields_sql = ", ".join([f"{table_name}.{f}" for f in fields])
+    # fields_sql = ", ".join([f"{table_name}.{f}" for f in fields])
+    fields_sql = ", ".join([f"{f}" for f in fields])
     # 拼接过滤条件（AND关系）
     filter_sql = " AND ".join(filter_conditions) if filter_conditions else "1=1"
     # 生成单表SQL
@@ -146,8 +147,8 @@ if __name__ == "__main__":
         
         # 生成最终SQL
         final_sql = build_final_sql(
-            tables=TABLES,
-            fields=FIELDS,
+            tables=TABLES_AccessDB,
+            fields=FIELDS_AccessDB,
             filter_conditions=FILTER_CONDITIONS,
             order_by_field="PartNumber",
             order="ASC"
