@@ -6,6 +6,7 @@ Introduction:
 Revision History:
 1.0.0 - 20260107 - 初始版本
 1.0.1 - 20260107 - 修正动态生成厂商零件号条件时，大小写处理错误的问题(AccessDB不区分大小写，SAPMaxDB区分大小写)
+1.0.2 - 20260108 - 待查询的表列表开启所有列表可以,使能所有支持的Table.
 '''
 
 # 版本号
@@ -13,7 +14,7 @@ Revision History:
 # xx: 大版本，架构性变化
 # yy: 功能性新增
 # zz: Bug修复
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 from pypika import Query, Table, Field
 from pypika.enums import Order
@@ -56,50 +57,50 @@ FIELDS_AccessDB: List[str] = [
 # SAPMaxDB表列表
 TABLES_SAPMaxDB: List[str] = [
     "CAPACITORS",
-    # "CONNECTORS",
-    # "CONVERTERS",
-    # "DIODES",
-    # "ICS_ANALOG",
-    # "ICS_DIGITAL",
-    # "MAGNETICS",
-    # "MECHPARTS",
-    # "MEMORY",
-    # "MISCPARTS",
-    # "OPTO",
-    # "OP_AMPS",
-    # "OSCILLATORS",
-    # "REGULATORS",
-    # "RELAYS",
+    "CONNECTORS",
+    "CONVERTERS",
+    "DIODES",
+    "ICS_ANALOG",
+    "ICS_DIGITAL",
+    "MAGNETICS",
+    "MECHPARTS",
+    "MEMORY",
+    "MISCPARTS",
+    "OPTO",
+    "OP_AMPS",
+    "OSCILLATORS",
+    "REGULATORS",
+    "RELAYS",
     "RESISTORS",
-    # "SENSORS",
-    # "SWITCHES",
-    # "TRANSFORMERS",
-    # "TRANSISTORS",
-    # "VARISTORS"
+    "SENSORS",
+    "SWITCHES",
+    "TRANSFORMERS",
+    "TRANSISTORS",
+    "VARISTORS"
 ]
 # AccessDB表列表
 TABLES_AccessDB: List[str] = [
     "[01-Capacitors]",
     "[02-Resistors]",
-    # "[03-Varistors]",
-    # "[04-Transistors]",
-    # "[05-Diodes]",
-    # "[06-ICs_digital]",
-    # "[07-Memory]",
-    # "[08-ICs_analog]",
-    # "[09-Regulators]",
-    # "[10-Converters]",
-    # "[11-OP_Amps]",
-    # "[12-Magnetics]",
-    # "[13-Transformers]",
-    # "[14-Opto]",
-    # "[15-Oscillators]",
-    # "[16-Connectors]",
-    # "[17-Relays]",
-    # "[18-Sensors]",
-    # "[19-Switches]",
-    # "[20-MechParts]",
-    # "[21-MiscParts]"
+    "[03-Varistors]",
+    "[04-Transistors]",
+    "[05-Diodes]",
+    "[06-ICs_digital]",
+    "[07-Memory]",
+    "[08-ICs_analog]",
+    "[09-Regulators]",
+    "[10-Converters]",
+    "[11-OP_Amps]",
+    "[12-Magnetics]",
+    "[13-Transformers]",
+    "[14-Opto]",
+    "[15-Oscillators]",
+    "[16-Connectors]",
+    "[17-Relays]",
+    "[18-Sensors]",
+    "[19-Switches]",
+    "[20-MechParts]",
+    "[21-MiscParts]"
 ]
 
 # 过滤条件（与关系：所有条件需同时满足）
