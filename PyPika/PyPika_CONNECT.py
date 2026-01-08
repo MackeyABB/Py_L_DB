@@ -5,6 +5,7 @@ Introduction:
 
 Revision History:
 1.0.0 - 20260107 - 初始版本
+1.0.1 - 20260107 - 修正动态生成厂商零件号条件时，大小写处理错误的问题(AccessDB不区分大小写，SAPMaxDB区分大小写)
 '''
 
 # 版本号
@@ -12,7 +13,7 @@ Revision History:
 # xx: 大版本，架构性变化
 # yy: 功能性新增
 # zz: Bug修复
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 from pypika import Query, Table, Field
 from pypika.enums import Order
@@ -114,12 +115,14 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
 ) -> List[str]:
     """
     根据输入变量是否非空，动态生成AND关系的过滤条件
-    :param DB_Type: 数据库类型（SAPMaxDB或AccessDB，默认SAPMaxDB）
-    :param PartNo_Searchby: 零件号搜索值（非空则生成PartNumber LIKE条件）
-    :param SAPNo_Searchby: SAP号搜索值（非空则生成SAP_Number LIKE条件）
-    :param PartValue_Searchby: 零件值搜索值（非空则生成value LIKE条件）
-    :param MfcPartNum_Searchby: 厂商零件号搜索值（非空则生成[manufact partnum 1-7]的OR条件）
-    :return: 过滤条件列表（AND关系，空变量不生成条件）
+    Args:
+        :param DB_Type: 数据库类型（SAPMaxDB或AccessDB，默认SAPMaxDB）
+        :param PartNo_Searchby: 零件号搜索值（非空则生成PartNumber LIKE条件）
+        :param SAPNo_Searchby: SAP号搜索值（非空则生成SAP_Number LIKE条件）
+        :param PartValue_Searchby: 零件值搜索值（非空则生成value LIKE条件）
+        :param MfcPartNum_Searchby: 厂商零件号搜索值（非空则生成[manufact partnum 1-7]的OR条件）
+    Return: 
+        过滤条件列表（AND关系，空变量不生成条件）
     注意:
     SAP MAXDB检索区分大小写的COLLATE Latin1_General_CS_AS
     """
@@ -151,12 +154,16 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
     if MfcPartNum_Searchby and MfcPartNum_Searchby.strip():
         if DB_Type == "AccessDB":
             mfc_partnum_fields = [f"[manufact partnum {i}]" for i in range(1, 8)]  # 1-7
+            # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%'
+            # 不区分大小写
+            mfc_conditions = " OR ".join([f"{field} LIKE '%{MfcPartNum_Searchby.strip()}%'" for field in mfc_partnum_fields])
+            filter_conditions.append(f"({mfc_conditions})")  # 括号保证优先级
         else: # SAPMaxDB
-            mfc_partnum_fields = [f"manufact_partnum_{i}" for i in range(1, 8)]  # 1-7
-        
-        # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%'
-        mfc_conditions = " OR ".join([f"LOWER({field}) LIKE LOWER('%{MfcPartNum_Searchby.strip()}%')" for field in mfc_partnum_fields])
-        filter_conditions.append(f"({mfc_conditions})")  # 括号保证优先级
+            mfc_partnum_fields = [f"manufact_partnum_{i}" for i in range(1, 8)]  # 1-7            
+            # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%'
+            # 区分大小写,需要LOWER
+            mfc_conditions = " OR ".join([f"LOWER({field}) LIKE LOWER('%{MfcPartNum_Searchby.strip()}%')" for field in mfc_partnum_fields])
+            filter_conditions.append(f"({mfc_conditions})")  # 括号保证优先级
     
     return filter_conditions
 
@@ -215,7 +222,7 @@ if __name__ == "__main__":
     try:
         # 切换不同DB
         DB_Type = "AccessDB"
-        DB_Type = "SAPMaxDB"
+        # DB_Type = "SAPMaxDB"
 
         if DB_Type == "AccessDB":
             # AccessDB
