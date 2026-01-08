@@ -1,1 +1,0 @@
-PartNumber	SAP_Number	AD_Symbol	PCB_Footprint	Alt_Symbols	MountTechn	
