@@ -7,6 +7,7 @@ Revision History:
 1.0.0 - 20260107 - 初始版本
 1.0.1 - 20260107 - 修正动态生成厂商零件号条件时，大小写处理错误的问题(AccessDB不区分大小写，SAPMaxDB区分大小写)
 1.0.2 - 20260108 - 待查询的表列表开启所有列表可以,使能所有支持的Table.
+1.1.0 - 20260109 - 新增过滤条件“Description”"techdescription" "editor"字段
 '''
 
 # 版本号
@@ -14,7 +15,7 @@ Revision History:
 # xx: 大版本，架构性变化
 # yy: 功能性新增
 # zz: Bug修复
-__version__ = "1.0.2"
+__version__ = "1.1.0"
 
 from pypika import Query, Table, Field
 from pypika.enums import Order
@@ -112,7 +113,10 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
     PartNo_Searchby: Optional[str] = None,
     SAPNo_Searchby: Optional[str] = None,
     PartValue_Searchby: Optional[str] = None,
-    MfcPartNum_Searchby: Optional[str] = None
+    MfcPartNum_Searchby: Optional[str] = None,
+    Description_Searchby: Optional[str] = None,
+    TechDescription_Searchby: Optional[str] = None,
+    Editor_Searchby: Optional[str] = None
 ) -> List[str]:
     """
     根据输入变量是否非空，动态生成AND关系的过滤条件
@@ -166,6 +170,27 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
             mfc_conditions = " OR ".join([f"LOWER({field}) LIKE LOWER('%{MfcPartNum_Searchby.strip()}%')" for field in mfc_partnum_fields])
             filter_conditions.append(f"({mfc_conditions})")  # 括号保证优先级
     
+    # 5. 处理SAP_Description（Description_Searchby非空则添加）
+    if Description_Searchby and Description_Searchby.strip():
+        if DB_Type == "AccessDB":
+            filter_conditions.append(f"SAP_Description LIKE '%{Description_Searchby.strip()}%'")
+        else:  # SAPMaxDB
+            filter_conditions.append(f"LOWER(SAP_Description) LIKE LOWER('%{Description_Searchby.strip()}%')") 
+    
+    # 6. 处理TechDescription（TechDescription_Searchby非空则添加）
+    if TechDescription_Searchby and TechDescription_Searchby.strip():
+        if DB_Type == "AccessDB":
+            filter_conditions.append(f"TECHDESCRIPTION LIKE '%{TechDescription_Searchby.strip()}%'")
+        else:  # SAPMaxDB
+            filter_conditions.append(f"LOWER(TechDescription) LIKE LOWER('%{TechDescription_Searchby.strip()}%')")
+    
+    # 7. 处理Editor（Editor_Searchby非空则添加）
+    if Editor_Searchby and Editor_Searchby.strip():
+        if DB_Type == "AccessDB":
+            filter_conditions.append(f"EDITOR LIKE '%{Editor_Searchby.strip()}%'")
+        else:  # SAPMaxDB
+            filter_conditions.append(f"LOWER(Editor) LIKE LOWER('%{Editor_Searchby.strip()}%')")
+
     return filter_conditions
 
 # --------------------------
@@ -247,10 +272,20 @@ if __name__ == "__main__":
         # 生成value条件
         PartValue_Searchby = "30K"    
         # PartValue_Searchby = "1U"    
-        # PartValue_Searchby = ""            
+        PartValue_Searchby = ""            
         # 生成manufact partnum 1-7的OR条件
         MfcPartNum_Searchby = "RC1206"   
-        # MfcPartNum_Searchby = ""   
+        MfcPartNum_Searchby = ""   
+        # 生成Description条件
+        Description_Searchby = "0402"
+        Description_Searchby = ""
+        # 生成TechDescription条件
+        TechDescription_Searchby = "FCN"
+        # TechDescription_Searchby = ""
+        # 生成Editor条件
+        Editor_Searchby = "guozhaolin"
+        # Editor_Searchby = ""
+
         
         # 动态生成过滤条件
         FILTER_CONDITIONS = generate_filter_conditions(
@@ -258,7 +293,10 @@ if __name__ == "__main__":
             PartNo_Searchby=PartNo_Searchby,
             SAPNo_Searchby=SAPNo_Searchby,
             PartValue_Searchby=PartValue_Searchby,
-            MfcPartNum_Searchby=MfcPartNum_Searchby
+            MfcPartNum_Searchby=MfcPartNum_Searchby,
+            Description_Searchby=Description_Searchby,
+            TechDescription_Searchby=TechDescription_Searchby,
+            Editor_Searchby=Editor_Searchby
         )
         
         # 生成最终SQL
