@@ -8,6 +8,9 @@ Revision History:
 1.0.1 - 20260107 - 修正动态生成厂商零件号条件时，大小写处理错误的问题(AccessDB不区分大小写，SAPMaxDB区分大小写)
 1.0.2 - 20260108 - 待查询的表列表开启所有列表可以,使能所有支持的Table.
 1.1.0 - 20260109 - 新增过滤条件“Description”"techdescription" "editor"字段
+1.1.1 - 20260109 - 使用上一版本测试时，发现数据库问题：
+    SAPMaxDB中Editor字段基本都为空值,检查同一物料的AccessDB却是有值,如CAP_1630物料,导致搜索结果不一致。
+    此问题与代码无关,仅记录于此.
 '''
 
 # 版本号
@@ -15,7 +18,7 @@ Revision History:
 # xx: 大版本，架构性变化
 # yy: 功能性新增
 # zz: Bug修复
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 from pypika import Query, Table, Field
 from pypika.enums import Order
@@ -58,26 +61,26 @@ FIELDS_AccessDB: List[str] = [
 # SAPMaxDB表列表
 TABLES_SAPMaxDB: List[str] = [
     "CAPACITORS",
-    "CONNECTORS",
-    "CONVERTERS",
-    "DIODES",
-    "ICS_ANALOG",
-    "ICS_DIGITAL",
-    "MAGNETICS",
-    "MECHPARTS",
-    "MEMORY",
-    "MISCPARTS",
-    "OPTO",
-    "OP_AMPS",
-    "OSCILLATORS",
-    "REGULATORS",
-    "RELAYS",
-    "RESISTORS",
-    "SENSORS",
-    "SWITCHES",
-    "TRANSFORMERS",
-    "TRANSISTORS",
-    "VARISTORS"
+    # "CONNECTORS",
+    # "CONVERTERS",
+    # "DIODES",
+    # "ICS_ANALOG",
+    # "ICS_DIGITAL",
+    # "MAGNETICS",
+    # "MECHPARTS",
+    # "MEMORY",
+    # "MISCPARTS",
+    # "OPTO",
+    # "OP_AMPS",
+    # "OSCILLATORS",
+    # "REGULATORS",
+    # "RELAYS",
+    # "RESISTORS",
+    # "SENSORS",
+    # "SWITCHES",
+    # "TRANSFORMERS",
+    # "TRANSISTORS",
+    # "VARISTORS"
 ]
 # AccessDB表列表
 TABLES_AccessDB: List[str] = [
@@ -248,7 +251,7 @@ if __name__ == "__main__":
     try:
         # 切换不同DB
         DB_Type = "AccessDB"
-        # DB_Type = "SAPMaxDB"
+        DB_Type = "SAPMaxDB"
 
         if DB_Type == "AccessDB":
             # AccessDB
@@ -281,9 +284,10 @@ if __name__ == "__main__":
         Description_Searchby = ""
         # 生成TechDescription条件
         TechDescription_Searchby = "FCN"
-        # TechDescription_Searchby = ""
+        TechDescription_Searchby = ""
         # 生成Editor条件
         Editor_Searchby = "guozhaolin"
+        Editor_Searchby = "jinhuanlao"
         # Editor_Searchby = ""
 
         
