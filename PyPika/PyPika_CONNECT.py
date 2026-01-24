@@ -12,6 +12,7 @@ Revision History:
     SAPMaxDB中Editor字段基本都为空值,检查同一物料的AccessDB却是有值,如CAP_1630物料,导致搜索结果不一致。
     此问题与代码无关,仅记录于此.
 1.1.2 - 20260124 - TABLES_SAPMaxDB中注释掉的表重新启用.解决CONNECT DB中无法查询到数据的问题。
+1.1.3 - 20260124 - FIELDS_AccessDB中删除pcb_footprint_cp, alt_symbols_cp字段,以便跟FIELDS_SAPMaxDB保持一致.
 '''
 
 # 版本号
@@ -19,7 +20,7 @@ Revision History:
 # xx: 大版本，架构性变化
 # yy: 功能性新增
 # zz: Bug修复
-__version__ = "1.1.2"
+__version__ = "1.1.3"
 
 from pypika import Query, Table, Field
 from pypika.enums import Order
@@ -39,8 +40,8 @@ FIELDS_SAPMaxDB: List[str] = [
     "manufact_5", "manufact_partnum_5", "datasheet_5",
     "manufact_6", "manufact_partnum_6", "datasheet_6",
     "manufact_7", "manufact_partnum_7", "datasheet_7",
-    "scm_symbol", "pcb_footprint", "alt_symbols", "mounttechn",
-    "ad_symbol", "ad_footprint", "ad_alt_footprint", "detaildrawing",
+    "scm_symbol", "pcb_footprint", "alt_symbols", 
+    "mounttechn", "ad_symbol", "ad_footprint", "ad_alt_footprint", "detaildrawing",
     "Status", "Editor", "US_technology", "TechDescription"
 ]
 # AccessDB字段列表
@@ -53,7 +54,7 @@ FIELDS_AccessDB: List[str] = [
     "[manufact 5]", "[manufact partnum 5]", "[datasheet 5]",
     "[manufact 6]", "[manufact partnum 6]", "[datasheet 6]",
     "[manufact 7]", "[manufact partnum 7]", "[datasheet 7]",
-    "scm_symbol", "pcb_footprint", "pcb_footprint_cp", "alt_symbols", "alt_symbols_cp",
+    "scm_symbol", "pcb_footprint", "alt_symbols",
     "mounttechn", "ad_symbol", "ad_footprint", "ad_alt_footprint", "detaildrawing",
     "STATUS", "EDITOR", "US_TECHNOLOGY", "TECHDESCRIPTION"
 ]
