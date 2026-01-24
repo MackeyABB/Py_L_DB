@@ -11,6 +11,7 @@ Revision History:
 1.1.1 - 20260109 - 使用上一版本测试时，发现数据库问题：
     SAPMaxDB中Editor字段基本都为空值,检查同一物料的AccessDB却是有值,如CAP_1630物料,导致搜索结果不一致。
     此问题与代码无关,仅记录于此.
+1.1.2 - 20260124 - TABLES_SAPMaxDB中注释掉的表重新启用.解决CONNECT DB中无法查询到数据的问题。
 '''
 
 # 版本号
@@ -18,7 +19,7 @@ Revision History:
 # xx: 大版本，架构性变化
 # yy: 功能性新增
 # zz: Bug修复
-__version__ = "1.1.1"
+__version__ = "1.1.2"
 
 from pypika import Query, Table, Field
 from pypika.enums import Order
@@ -61,26 +62,26 @@ FIELDS_AccessDB: List[str] = [
 # SAPMaxDB表列表
 TABLES_SAPMaxDB: List[str] = [
     "CAPACITORS",
-    # "CONNECTORS",
-    # "CONVERTERS",
-    # "DIODES",
-    # "ICS_ANALOG",
-    # "ICS_DIGITAL",
-    # "MAGNETICS",
-    # "MECHPARTS",
-    # "MEMORY",
-    # "MISCPARTS",
-    # "OPTO",
-    # "OP_AMPS",
-    # "OSCILLATORS",
-    # "REGULATORS",
-    # "RELAYS",
-    # "RESISTORS",
-    # "SENSORS",
-    # "SWITCHES",
-    # "TRANSFORMERS",
-    # "TRANSISTORS",
-    # "VARISTORS"
+    "CONNECTORS",
+    "CONVERTERS",
+    "DIODES",
+    "ICS_ANALOG",
+    "ICS_DIGITAL",
+    "MAGNETICS",
+    "MECHPARTS",
+    "MEMORY",
+    "MISCPARTS",
+    "OPTO",
+    "OP_AMPS",
+    "OSCILLATORS",
+    "REGULATORS",
+    "RELAYS",
+    "RESISTORS",
+    "SENSORS",
+    "SWITCHES",
+    "TRANSFORMERS",
+    "TRANSISTORS",
+    "VARISTORS"
 ]
 # AccessDB表列表
 TABLES_AccessDB: List[str] = [
