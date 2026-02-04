@@ -13,6 +13,7 @@ Revision History:
     此问题与代码无关,仅记录于此.
 1.1.2 - 20260124 - TABLES_SAPMaxDB中注释掉的表重新启用.解决CONNECT DB中无法查询到数据的问题。
 1.1.3 - 20260124 - FIELDS_AccessDB中删除pcb_footprint_cp, alt_symbols_cp字段,以便跟FIELDS_SAPMaxDB保持一致.
+1.2.0 - 20260204 - 函数"generate_filter_conditions"增加过滤条件“Manufacturer”字段,以实现按制造商过滤搜索结果。
 '''
 
 # 版本号
@@ -20,7 +21,7 @@ Revision History:
 # xx: 大版本，架构性变化
 # yy: 功能性新增
 # zz: Bug修复
-__version__ = "1.1.3"
+__version__ = "1.2.0"
 
 from pypika import Query, Table, Field
 from pypika.enums import Order
@@ -121,7 +122,8 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
     MfcPartNum_Searchby: Optional[str] = None,
     Description_Searchby: Optional[str] = None,
     TechDescription_Searchby: Optional[str] = None,
-    Editor_Searchby: Optional[str] = None
+    Editor_Searchby: Optional[str] = None,
+    Manufacturer_Searchby: Optional[str] = None
 ) -> List[str]:
     """
     根据输入变量是否非空，动态生成AND关系的过滤条件
@@ -131,6 +133,10 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
         :param SAPNo_Searchby: SAP号搜索值（非空则生成SAP_Number LIKE条件）
         :param PartValue_Searchby: 零件值搜索值（非空则生成value LIKE条件）
         :param MfcPartNum_Searchby: 厂商零件号搜索值（非空则生成[manufact partnum 1-7]的OR条件）
+        :param Description_Searchby: SAP_Description搜索值（非空则生成SAP_Description LIKE条件）
+        :param TechDescription_Searchby: TechDescription搜索值（非空则生成TechDescription LIKE条件）
+        :param Editor_Searchby: Editor搜索值（非空则生成Editor LIKE条件）
+        :param Manufacturer_Searchby: Manufacturer搜索值（非空则生成Manufacturer LIKE条件）
     Return: 
         过滤条件列表（AND关系，空变量不生成条件）
     注意:
@@ -195,6 +201,21 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
             filter_conditions.append(f"EDITOR LIKE '%{Editor_Searchby.strip()}%'")
         else:  # SAPMaxDB
             filter_conditions.append(f"LOWER(Editor) LIKE LOWER('%{Editor_Searchby.strip()}%')")
+
+    # 8. 处理[Manufacturer1-7]（Manufacturer_Searchby非空则添加）
+    if Manufacturer_Searchby and Manufacturer_Searchby.strip():
+        if DB_Type == "AccessDB":
+            mfc_partnum_fields = [f"[manufact {i}]" for i in range(1, 8)]  # 1-7
+            # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%'
+            # 不区分大小写
+            mfc_conditions = " OR ".join([f"{field} LIKE '%{Manufacturer_Searchby.strip()}%'" for field in mfc_partnum_fields])
+            filter_conditions.append(f"({mfc_conditions})")  # 括号保证优先级
+        else: # SAPMaxDB
+            mfc_partnum_fields = [f"manufact_{i}" for i in range(1, 8)]  # 1-7            
+            # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%'
+            # 区分大小写,需要LOWER
+            mfc_conditions = " OR ".join([f"LOWER({field}) LIKE LOWER('%{Manufacturer_Searchby.strip()}%')" for field in mfc_partnum_fields])
+            filter_conditions.append(f"({mfc_conditions})")  # 括号保证优先级
 
     return filter_conditions
 
