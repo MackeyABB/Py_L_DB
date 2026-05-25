@@ -14,6 +14,7 @@ Revision History:
 1.1.2 - 20260124 - TABLES_SAPMaxDB中注释掉的表重新启用.解决CONNECT DB中无法查询到数据的问题。
 1.1.3 - 20260124 - FIELDS_AccessDB中删除pcb_footprint_cp, alt_symbols_cp字段,以便跟FIELDS_SAPMaxDB保持一致.
 1.2.0 - 20260204 - 函数"generate_filter_conditions"增加过滤条件“Manufacturer”字段,以实现按制造商过滤搜索结果。
+1.3.0 - 20260525 - 增加PostgreSQL支持。
 '''
 
 # 版本号
@@ -21,11 +22,17 @@ Revision History:
 # xx: 大版本，架构性变化
 # yy: 功能性新增
 # zz: Bug修复
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 from pypika import Query, Table, Field
 from pypika.enums import Order
 from typing import List, Optional
+
+# 工具函数：PostgreSQL字段/表名加双引号
+def quote_pg_identifier(name: str) -> str:
+    if name.startswith('"') and name.endswith('"'):
+        return name
+    return f'"{name}"'
 
 # --------------------------
 # 1. 全局配置项（与业务完全匹配）
@@ -110,6 +117,47 @@ TABLES_AccessDB: List[str] = [
     "[21-MiscParts]"
 ]
 
+# PostgreSQL字段列表，与AccessDB一致
+FIELDS_PostgreSQL: List[str] = [
+    "PartNumber", "Value", "SAP_Number", "SAP_Description", "Status", "PartType",
+    "Manufact 1", "Manufact PartNum 1", "Datasheet 1",
+    "Manufact 2", "Manufact PartNum 2", "Datasheet 2",
+    "Manufact 3", "Manufact PartNum 3", "Datasheet 3",
+    "Manufact 4", "Manufact PartNum 4", "Datasheet 4",
+    "Manufact 5", "Manufact PartNum 5", "Datasheet 5",
+    "Manufact 6", "Manufact PartNum 6", "Datasheet 6",
+    "Manufact 7", "Manufact PartNum 7", "Datasheet 7",
+    "SCM_Symbol", "PCB_Footprint", "Alt_Symbols",
+    "MountTechn", "AD_Symbol", "AD_Footprint", "AD_Alt_Footprint", "Detaildrawing",
+    "Status", "Editor", "US_technology", "TechDescription"
+]
+# PostgreSQL表列表，与AccessDB一致（去除[]，因db_mgt.py已做包裹处理）
+TABLES_PostgreSQL: List[str] = [
+    "01-Capacitors",
+    "02-Resistors",
+    "03-Varistors",
+    "04-Transistors",
+    "05-Diodes",
+    "06-ICs_digital",
+    "07-Memory",
+    "08-ICs_analog",
+    "09-Regulators",
+    "10-Converters",
+    "11-OP_Amps",
+    "12-Magnetics",
+    "13-Transformers",
+    "14-Opto",
+    "15-Oscillators",
+    "16-Connectors",
+    "17-Relays",
+    "18-Sensors",
+    "19-Switches",
+    "20-MechParts",
+    "21-MiscParts"
+]
+
+
+
 # 过滤条件（与关系：所有条件需同时满足）
 # 格式：[条件SQL片段]，最终会用 AND 拼接
 # --------------------------
@@ -148,6 +196,8 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
     if PartNo_Searchby and PartNo_Searchby.strip():
         if DB_Type == "AccessDB":
             filter_conditions.append(f"PartNumber LIKE '%{PartNo_Searchby.strip()}%'")
+        elif DB_Type == "PostgreSQL":
+            filter_conditions.append(f"LOWER({quote_pg_identifier('PartNumber')}) LIKE LOWER('%{PartNo_Searchby.strip()}%')")
         else:  # SAPMaxDB
             filter_conditions.append(f"LOWER(PartNumber) LIKE LOWER('%{PartNo_Searchby.strip()}%')")
 
@@ -155,6 +205,8 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
     if SAPNo_Searchby and SAPNo_Searchby.strip():
         if DB_Type == "AccessDB":
             filter_conditions.append(f"SAP_Number LIKE '%{SAPNo_Searchby.strip()}%'")
+        elif DB_Type == "PostgreSQL":
+            filter_conditions.append(f"LOWER({quote_pg_identifier('SAP_Number')}) LIKE LOWER('%{SAPNo_Searchby.strip()}%')")
         else:  # SAPMaxDB
             filter_conditions.append(f"LOWER(SAP_Number) LIKE LOWER('%{SAPNo_Searchby.strip()}%')")
 
@@ -162,10 +214,11 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
     if PartValue_Searchby and PartValue_Searchby.strip():
         if DB_Type == "AccessDB":
             filter_conditions.append(f"value LIKE '%{PartValue_Searchby.strip()}%'")
+        elif DB_Type == "PostgreSQL":
+            filter_conditions.append(f"LOWER({quote_pg_identifier('Value')}) LIKE LOWER('%{PartValue_Searchby.strip()}%')")
         else: # SAPMaxDB
             filter_conditions.append(f"LOWER(value_1) LIKE LOWER('%{PartValue_Searchby.strip()}%')")
 
-    
     # 4. 处理[manufact partnum 1-7]（MfcPartNum_Searchby非空则添加OR组合条件）
     if MfcPartNum_Searchby and MfcPartNum_Searchby.strip():
         if DB_Type == "AccessDB":
@@ -173,7 +226,11 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
             # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%'
             # 不区分大小写
             mfc_conditions = " OR ".join([f"{field} LIKE '%{MfcPartNum_Searchby.strip()}%'" for field in mfc_partnum_fields])
-            filter_conditions.append(f"({mfc_conditions})")  # 括号保证优先级
+            filter_conditions.append(f"({mfc_conditions})")
+        elif DB_Type == "PostgreSQL":
+            mfc_partnum_fields = [f"Manufact PartNum {i}" for i in range(1, 8)]
+            mfc_conditions = " OR ".join([f"LOWER({quote_pg_identifier(field)}) LIKE LOWER('%{MfcPartNum_Searchby.strip()}%')" for field in mfc_partnum_fields])
+            filter_conditions.append(f"({mfc_conditions})")
         else: # SAPMaxDB
             mfc_partnum_fields = [f"manufact_partnum_{i}" for i in range(1, 8)]  # 1-7            
             # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%'
@@ -185,20 +242,26 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
     if Description_Searchby and Description_Searchby.strip():
         if DB_Type == "AccessDB":
             filter_conditions.append(f"SAP_Description LIKE '%{Description_Searchby.strip()}%'")
+        elif DB_Type == "PostgreSQL":
+                filter_conditions.append(f"LOWER({quote_pg_identifier('SAP_Description')}) LIKE LOWER('%{Description_Searchby.strip()}%')")
         else:  # SAPMaxDB
             filter_conditions.append(f"LOWER(SAP_Description) LIKE LOWER('%{Description_Searchby.strip()}%')") 
-    
+
     # 6. 处理TechDescription（TechDescription_Searchby非空则添加）
     if TechDescription_Searchby and TechDescription_Searchby.strip():
         if DB_Type == "AccessDB":
             filter_conditions.append(f"TECHDESCRIPTION LIKE '%{TechDescription_Searchby.strip()}%'")
+        elif DB_Type == "PostgreSQL":
+                filter_conditions.append(f"LOWER({quote_pg_identifier('TechDescription')}) LIKE LOWER('%{TechDescription_Searchby.strip()}%')")
         else:  # SAPMaxDB
             filter_conditions.append(f"LOWER(TechDescription) LIKE LOWER('%{TechDescription_Searchby.strip()}%')")
-    
+
     # 7. 处理Editor（Editor_Searchby非空则添加）
     if Editor_Searchby and Editor_Searchby.strip():
         if DB_Type == "AccessDB":
             filter_conditions.append(f"EDITOR LIKE '%{Editor_Searchby.strip()}%'")
+        elif DB_Type == "PostgreSQL":
+                filter_conditions.append(f"LOWER({quote_pg_identifier('Editor')}) LIKE LOWER('%{Editor_Searchby.strip()}%')")
         else:  # SAPMaxDB
             filter_conditions.append(f"LOWER(Editor) LIKE LOWER('%{Editor_Searchby.strip()}%')")
 
@@ -209,7 +272,11 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
             # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%'
             # 不区分大小写
             mfc_conditions = " OR ".join([f"{field} LIKE '%{Manufacturer_Searchby.strip()}%'" for field in mfc_partnum_fields])
-            filter_conditions.append(f"({mfc_conditions})")  # 括号保证优先级
+            filter_conditions.append(f"({mfc_conditions})")
+        elif DB_Type == "PostgreSQL":
+            mfc_partnum_fields = [f"Manufact {i}" for i in range(1, 8)]
+            mfc_conditions = " OR ".join([f"LOWER({quote_pg_identifier(field)}) LIKE LOWER('%{Manufacturer_Searchby.strip()}%')" for field in mfc_partnum_fields])
+            filter_conditions.append(f"({mfc_conditions})")
         else: # SAPMaxDB
             mfc_partnum_fields = [f"manufact_{i}" for i in range(1, 8)]  # 1-7            
             # 生成 (字段1 LIKE '%值%' OR 字段2 LIKE '%值%'
@@ -222,21 +289,23 @@ def generate_filter_conditions(DB_Type: str = "SAPMaxDB",
 # --------------------------
 # 2. 核心函数（模板化生成，避开PyPika底层Bug）
 # --------------------------
-def build_single_table_sql(table_name: str, fields: List[str], filter_conditions: List[str]) -> str:
+def build_single_table_sql(table_name: str, fields: List[str], filter_conditions: List[str], db_type: str = "SAPMaxDB") -> str:
     """
     生成单表查询SQL（多条件用AND组合）
     :param table_name: 表名
     :param fields: 字段列表
     :param filter_conditions: 过滤条件列表（AND关系）
+    :param db_type: 数据库类型
     :return: 单表SQL
     """
-    # 拼接字段（带表前缀）
-    # fields_sql = ", ".join([f"{table_name}.{f}" for f in fields])
-    fields_sql = ", ".join([f"{f}" for f in fields])
-    # 拼接过滤条件（AND关系）
+    if db_type == "PostgreSQL":
+        fields_sql = ", ".join([quote_pg_identifier(f) for f in fields])
+        table_sql = quote_pg_identifier(table_name.replace('"', ''))
+    else:
+        fields_sql = ", ".join([f"{f}" for f in fields])
+        table_sql = table_name
     filter_sql = " AND ".join(filter_conditions) if filter_conditions else "1=1"
-    # 生成单表SQL
-    single_sql = f"SELECT {fields_sql} FROM {table_name} WHERE {filter_sql}"
+    single_sql = f"SELECT {fields_sql} FROM {table_sql} WHERE {filter_sql}"
     return single_sql
 
 def build_final_sql(
@@ -244,24 +313,22 @@ def build_final_sql(
     fields: List[str],
     filter_conditions: List[str],
     order_by_field: str = "PartNumber",
-    order: str = "ASC"
+    order: str = "ASC",
+    db_type: str = "SAPMaxDB"
 ) -> str:
     """
     生成最终SQL（多表UNION ALL + 条件AND组合）
     """
-    # 生成每个表的查询（所有表共用同一套AND条件）
     table_sqls = [
-        build_single_table_sql(t, fields, filter_conditions)
+        build_single_table_sql(t, fields, filter_conditions, db_type=db_type)
         for t in tables
     ]
-    
-    # 拼接多表的UNION ALL（仅表之间UNION ALL，条件是AND）
     union_all_sql = " UNION ALL ".join(table_sqls)
-    
-    # 追加排序
-    final_sql = f"{union_all_sql} ORDER BY {order_by_field} {order}"
-    
-    # 格式化SQL（便于阅读）
+    if db_type == "PostgreSQL":
+        order_by = quote_pg_identifier(order_by_field)
+    else:
+        order_by = order_by_field
+    final_sql = f"{union_all_sql} ORDER BY {order_by} {order}"
     final_sql = final_sql.replace(" UNION ALL ", "\nUNION ALL\n")
     final_sql = final_sql.replace(" AND ", "\n  AND ")
     final_sql = final_sql.replace(" OR ", "\n    OR ")
